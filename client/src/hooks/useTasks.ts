@@ -94,5 +94,19 @@ export function useTasks() {
     [message]
   );
 
-  return { tasks, loading, error, reload: load, createTask, updateStatus };
+  /** Admin-only: move a task to a different assignee. */
+  const reassign = useCallback(
+    async (id: string, assignedTo: string) => {
+      try {
+        const updated = await taskApi.assignTask(id, assignedTo);
+        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+        message.success('Task reassigned');
+      } catch (err) {
+        message.error(errorMessage(err, 'Could not reassign task'));
+      }
+    },
+    [message]
+  );
+
+  return { tasks, loading, error, reload: load, createTask, updateStatus, reassign };
 }

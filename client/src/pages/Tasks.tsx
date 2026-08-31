@@ -8,7 +8,7 @@ import { TaskForm } from '../components/TaskForm';
 
 export function Tasks() {
   const { user, logout } = useAuth();
-  const { tasks, loading, error, createTask, updateStatus } = useTasks();
+  const { tasks, loading, error, createTask, updateStatus, reassign } = useTasks();
   const [formOpen, setFormOpen] = useState(false);
 
   // ProtectedRoute guarantees a user here.
@@ -63,6 +63,7 @@ export function Tasks() {
             loading={loading}
             currentUser={user}
             onStatusChange={updateStatus}
+            onReassign={isAdmin ? reassign : undefined}
           />
         </Space>
       </Layout.Content>
