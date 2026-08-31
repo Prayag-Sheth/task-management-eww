@@ -19,9 +19,5 @@ Thumbs.db
 coverage/
 *.tsbuildinfo
 
-# Working notes — not part of the submission
-PLAN.md
-CLAUDE.md
-
 # Interview brief — not part of the submission
 *.pdf
