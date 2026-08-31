@@ -65,23 +65,23 @@ Open http://localhost:5173 and sign in.
 All accounts use the password **`password123`**. The seed creates **15 users**
 (2 admins, 13 users) and **15 tasks** spread across all three statuses.
 
-| Email                  | Role  |
-|------------------------|-------|
-| `admin@example.com`    | admin |
-| `priya@example.com`    | admin |
-| `john@example.com`     | user  |
-| `jane@example.com`     | user  |
-| `arjun@example.com`    | user  |
-| `sara@example.com`     | user  |
-| `michael@example.com`  | user  |
-| `aisha@example.com`    | user  |
-| `tom@example.com`      | user  |
-| `nina@example.com`     | user  |
-| `rahul@example.com`    | user  |
-| `emily@example.com`    | user  |
-| `omar@example.com`     | user  |
-| `lena@example.com`     | user  |
-| `david@example.com`    | user  |
+| Email                  | Role  | Notes |
+|------------------------|-------|-------|
+| `admin@example.com`    | admin | Primary admin — use this one to try the app |
+| `priya@example.com`    | admin | Secondary admin — shows two admins coexisting |
+| `john@example.com`     | user  |       |
+| `jane@example.com`     | user  |       |
+| `arjun@example.com`    | user  |       |
+| `sara@example.com`     | user  |       |
+| `michael@example.com`  | user  |       |
+| `aisha@example.com`    | user  |       |
+| `tom@example.com`      | user  |       |
+| `nina@example.com`     | user  |       |
+| `rahul@example.com`    | user  |       |
+| `emily@example.com`    | user  |       |
+| `omar@example.com`     | user  |       |
+| `lena@example.com`     | user  |       |
+| `david@example.com`    | user  |       |
 
 ### Seeing the real-time notification
 
