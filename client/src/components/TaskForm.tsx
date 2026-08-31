@@ -111,6 +111,8 @@ export function TaskForm({
       confirmLoading={submitting}
       // Remount per open so initialValues below are re-read for the new task.
       destroyOnClose
+      // Cap the body so the footer buttons stay reachable on short screens.
+      styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
     >
       <Form
         form={form}
