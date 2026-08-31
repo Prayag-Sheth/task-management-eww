@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Table, Empty, Typography, Select, Segmented, Space } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Table,
+  Empty,
+  Typography,
+  Select,
+  Segmented,
+  Space,
+  Button,
+  Popconfirm,
+  Tooltip,
+  Avatar,
+} from 'antd';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { StatusSelect, StatusTag } from './StatusSelect';
 import * as authApi from '../api/auth.api';
@@ -11,6 +23,8 @@ interface TaskListProps {
   currentUser: User;
   onStatusChange: (id: string, status: TaskStatus) => void;
   onReassign?: (id: string, assignedTo: string) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (id: string) => void;
 }
 
 type Filter = 'all' | TaskStatus;
@@ -28,26 +42,59 @@ const emptyTextFor = (role: Role, filter: Filter) => {
     : 'No tasks assigned to you yet.';
 };
 
+/** Deterministic colour per user, so an avatar is recognisable at a glance. */
+const AVATAR_COLORS = ['#1677ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2'];
+function colorFor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+const initialsOf = (name: string) =>
+  name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+
 export function TaskList({
   tasks,
   loading,
   currentUser,
   onStatusChange,
   onReassign,
+  onEdit,
+  onDelete,
 }: TaskListProps) {
   const isAdmin = currentUser.role === 'admin';
   const [filter, setFilter] = useState<Filter>('all');
   const [users, setUsers] = useState<User[]>([]);
 
-  // Only an admin can reassign, and only an admin may call /users.
   useEffect(() => {
     if (!isAdmin || !onReassign) return;
     authApi.fetchUsers().then(setUsers).catch(() => setUsers([]));
   }, [isAdmin, onReassign]);
 
+  /**
+   * Rows are ordered by first-seen id, not by the live task order. Without this
+   * a status or assignee change re-sorts the table and the row jumps out from
+   * under the pointer mid-interaction.
+   */
+  const orderRef = useRef<string[]>([]);
+  const ordered = useMemo(() => {
+    const known = new Set(orderRef.current);
+    const additions = tasks.map((t) => t.id).filter((id) => !known.has(id));
+    // New tasks (including ones arriving over the socket) go to the top.
+    orderRef.current = [...additions, ...orderRef.current];
+
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    orderRef.current = orderRef.current.filter((id) => byId.has(id));
+    return orderRef.current.map((id) => byId.get(id)!);
+  }, [tasks]);
+
   const visible = useMemo(
-    () => (filter === 'all' ? tasks : tasks.filter((t) => t.status === filter)),
-    [tasks, filter]
+    () => (filter === 'all' ? ordered : ordered.filter((t) => t.status === filter)),
+    [ordered, filter]
   );
 
   const counts = useMemo(() => {
@@ -63,18 +110,26 @@ export function TaskList({
 
   const columns: ColumnsType<Task> = [
     {
-      title: 'Title',
+      title: 'Task',
       dataIndex: 'title',
       key: 'title',
       render: (title: string, task) => (
-        <div>
-          <Typography.Text strong>{title}</Typography.Text>
-          {task.description && (
-            <div>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {task.description}
-              </Typography.Text>
-            </div>
+        <div style={{ maxWidth: 420 }}>
+          <Typography.Text strong style={{ display: 'block' }}>
+            {title}
+          </Typography.Text>
+          {task.description ? (
+            <Typography.Paragraph
+              type="secondary"
+              style={{ fontSize: 12, marginBottom: 0, marginTop: 2 }}
+              ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}
+            >
+              {task.description}
+            </Typography.Paragraph>
+          ) : (
+            <Typography.Text type="secondary" style={{ fontSize: 12, fontStyle: 'italic' }}>
+              No description
+            </Typography.Text>
           )}
         </div>
       ),
@@ -82,32 +137,54 @@ export function TaskList({
     {
       title: 'Assigned to',
       key: 'assignedTo',
+      width: 220,
       render: (_, task) => {
         const assignee = assigneeOf(task);
         if (!assignee) return <Typography.Text type="secondary">—</Typography.Text>;
 
-        // Admins can move a task to someone else directly from the list.
         if (isAdmin && onReassign) {
           return (
             <Select
               value={assignee.id}
               onChange={(next) => onReassign(task.id, next)}
-              style={{ width: 180 }}
-              options={users.map((u) => ({ value: u.id, label: u.name }))}
+              style={{ width: 190 }}
+              variant="borderless"
+              options={users.map((u) => ({
+                value: u.id,
+                label: (
+                  <Space size={6}>
+                    <Avatar size={20} style={{ backgroundColor: colorFor(u.id), fontSize: 10 }}>
+                      {initialsOf(u.name)}
+                    </Avatar>
+                    {u.name}
+                  </Space>
+                ),
+              }))}
             />
           );
         }
 
-        return assignee.id === currentUser.id ? (
-          <Typography.Text strong>You</Typography.Text>
-        ) : (
-          assignee.name
+        return (
+          <Space size={8}>
+            <Avatar
+              size={24}
+              style={{ backgroundColor: colorFor(assignee.id), fontSize: 11 }}
+            >
+              {initialsOf(assignee.name)}
+            </Avatar>
+            {assignee.id === currentUser.id ? (
+              <Typography.Text strong>You</Typography.Text>
+            ) : (
+              assignee.name
+            )}
+          </Space>
         );
       },
     },
     {
       title: 'Status',
       key: 'status',
+      width: 170,
       render: (_, task) => {
         const assignee = assigneeOf(task);
         // Only the assigned user may change status — admins included, per spec.
@@ -119,7 +196,11 @@ export function TaskList({
             onChange={(status) => onStatusChange(task.id, status)}
           />
         ) : (
-          <StatusTag status={task.status} />
+          <Tooltip title="Only the assigned user can change status">
+            <span>
+              <StatusTag status={task.status} />
+            </span>
+          </Tooltip>
         );
       },
     },
@@ -127,10 +208,48 @@ export function TaskList({
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      responsive: ['md'],
-      render: (iso: string) => new Date(iso).toLocaleDateString(),
+      width: 110,
+      responsive: ['lg'],
+      render: (iso: string) => (
+        <Tooltip title={new Date(iso).toLocaleString()}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {new Date(iso).toLocaleDateString()}
+          </Typography.Text>
+        </Tooltip>
+      ),
     },
   ];
+
+  if (isAdmin && (onEdit || onDelete)) {
+    columns.push({
+      title: '',
+      key: 'actions',
+      width: 90,
+      align: 'right',
+      render: (_, task) => (
+        <Space size={4}>
+          {onEdit && (
+            <Tooltip title="Edit task">
+              <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(task)} />
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Popconfirm
+              title="Delete this task?"
+              description="This cannot be undone."
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => onDelete(task.id)}
+            >
+              <Tooltip title="Delete task">
+                <Button type="text" danger icon={<DeleteOutlined />} />
+              </Tooltip>
+            </Popconfirm>
+          )}
+        </Space>
+      ),
+    });
+  }
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -152,9 +271,7 @@ export function TaskList({
         dataSource={visible}
         loading={loading}
         pagination={false}
-        locale={{
-          emptyText: <Empty description={emptyTextFor(currentUser.role, filter)} />,
-        }}
+        locale={{ emptyText: <Empty description={emptyTextFor(currentUser.role, filter)} /> }}
       />
     </Space>
   );

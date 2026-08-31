@@ -3,7 +3,13 @@ import { App } from 'antd';
 import * as taskApi from '../api/task.api';
 import { errorMessage } from '../api/client';
 import { useSocket } from './useSocket';
-import { CreateTaskInput, SOCKET_EVENTS, Task, TaskStatus } from '../types';
+import {
+  CreateTaskInput,
+  SOCKET_EVENTS,
+  Task,
+  TaskStatus,
+  UpdateTaskInput,
+} from '../types';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -46,12 +52,18 @@ export function useTasks() {
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
     };
 
+    const onDeleted = ({ taskId }: { taskId: string }) => {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    };
+
     socket.on(SOCKET_EVENTS.TASK_ASSIGNED, onAssigned);
     socket.on(SOCKET_EVENTS.TASK_UPDATED, onUpdated);
+    socket.on(SOCKET_EVENTS.TASK_DELETED, onDeleted);
 
     return () => {
       socket.off(SOCKET_EVENTS.TASK_ASSIGNED, onAssigned);
       socket.off(SOCKET_EVENTS.TASK_UPDATED, onUpdated);
+      socket.off(SOCKET_EVENTS.TASK_DELETED, onDeleted);
     };
   }, [socket, notification]);
 
@@ -108,5 +120,37 @@ export function useTasks() {
     [message]
   );
 
-  return { tasks, loading, error, reload: load, createTask, updateStatus, reassign };
+  const editTask = useCallback(
+    async (id: string, input: UpdateTaskInput) => {
+      const updated = await taskApi.updateTask(id, input);
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      message.success('Task updated');
+    },
+    [message]
+  );
+
+  const removeTask = useCallback(
+    async (id: string) => {
+      try {
+        await taskApi.deleteTask(id);
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        message.success('Task deleted');
+      } catch (err) {
+        message.error(errorMessage(err, 'Could not delete task'));
+      }
+    },
+    [message]
+  );
+
+  return {
+    tasks,
+    loading,
+    error,
+    reload: load,
+    createTask,
+    updateStatus,
+    reassign,
+    editTask,
+    removeTask,
+  };
 }

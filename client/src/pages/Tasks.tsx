@@ -1,80 +1,73 @@
 import { useState } from 'react';
-import { Layout, Button, Typography, Space, Tag, Alert } from 'antd';
-import { PlusOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Button, Typography, Space, Alert } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { TaskList } from '../components/TaskList';
 import { TaskForm } from '../components/TaskForm';
+import { Task } from '../types';
 
 export function Tasks() {
-  const { user, logout } = useAuth();
-  const { tasks, loading, error, createTask, updateStatus, reassign } = useTasks();
+  const { user } = useAuth();
+  const { tasks, loading, error, createTask, updateStatus, reassign, editTask, removeTask } =
+    useTasks();
   const [formOpen, setFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // ProtectedRoute guarantees a user here.
   if (!user) return null;
 
   const isAdmin = user.role === 'admin';
 
+  const openCreate = () => {
+    setEditingTask(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (task: Task) => {
+    setEditingTask(task);
+    setFormOpen(true);
+  };
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Layout.Header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
-          padding: '0 24px',
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Task Management
-        </Typography.Title>
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+        <Typography.Text type="secondary">
+          {isAdmin ? 'All tasks' : 'Tasks assigned to you'}
+        </Typography.Text>
 
-        <Space>
-          <Typography.Text>{user.name}</Typography.Text>
-          <Tag color={isAdmin ? 'gold' : 'blue'}>{user.role}</Tag>
-          <Button icon={<LogoutOutlined />} onClick={logout}>
-            Log out
+        {/* Role-based UI: only an admin can create and assign. */}
+        {isAdmin && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Create task
           </Button>
-        </Space>
-      </Layout.Header>
+        )}
+      </Space>
 
-      <Layout.Content style={{ padding: 24, maxWidth: 1100, width: '100%', margin: '0 auto' }}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-            <Typography.Text type="secondary">
-              {isAdmin ? 'All tasks' : 'Tasks assigned to you'}
-            </Typography.Text>
+      {error && <Alert type="error" message={error} showIcon />}
 
-            {/* Role-based UI: only an admin can create and assign. */}
-            {isAdmin && (
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>
-                Create task
-              </Button>
-            )}
-          </Space>
-
-          {error && <Alert type="error" message={error} showIcon />}
-
-          <TaskList
-            tasks={tasks}
-            loading={loading}
-            currentUser={user}
-            onStatusChange={updateStatus}
-            onReassign={isAdmin ? reassign : undefined}
-          />
-        </Space>
-      </Layout.Content>
+      <TaskList
+        tasks={tasks}
+        loading={loading}
+        currentUser={user}
+        onStatusChange={updateStatus}
+        onReassign={isAdmin ? reassign : undefined}
+        onEdit={isAdmin ? openEdit : undefined}
+        onDelete={isAdmin ? removeTask : undefined}
+      />
 
       {isAdmin && (
         <TaskForm
           open={formOpen}
-          onClose={() => setFormOpen(false)}
-          onSubmit={createTask}
+          task={editingTask}
+          onClose={() => {
+            setFormOpen(false);
+            setEditingTask(null);
+          }}
+          onCreate={createTask}
+          onEdit={editTask}
         />
       )}
-    </Layout>
+    </Space>
   );
 }

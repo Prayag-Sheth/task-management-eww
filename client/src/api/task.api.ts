@@ -1,5 +1,11 @@
 import { api } from './client';
-import { ApiSuccess, CreateTaskInput, Task, TaskStatus } from '../types';
+import {
+  ApiSuccess,
+  CreateTaskInput,
+  Task,
+  TaskStatus,
+  UpdateTaskInput,
+} from '../types';
 
 export async function fetchTasks(): Promise<Task[]> {
   const { data } = await api.get<ApiSuccess<Task[]>>('/tasks');
@@ -19,4 +25,16 @@ export async function updateTaskStatus(id: string, status: TaskStatus): Promise<
 export async function assignTask(id: string, assignedTo: string): Promise<Task> {
   const { data } = await api.patch<ApiSuccess<Task>>(`/tasks/${id}/assign`, { assignedTo });
   return data.data;
+}
+
+export async function updateTask(
+  id: string,
+  input: UpdateTaskInput
+): Promise<Task> {
+  const { data } = await api.patch<ApiSuccess<Task>>(`/tasks/${id}`, input);
+  return data.data;
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await api.delete(`/tasks/${id}`);
 }
