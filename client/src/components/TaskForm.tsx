@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, Select, App, Avatar, Space, Tag } from 'antd';
+import { Modal, Form, Input, App } from 'antd';
+import { AssigneePicker } from './AssigneePicker';
 import * as authApi from '../api/auth.api';
 import { errorMessage } from '../api/client';
 import { CreateTaskInput, Task, UpdateTaskInput, User, assigneeOf } from '../types';
@@ -20,20 +21,6 @@ interface FormValues {
   assignedTo: string;
 }
 
-const AVATAR_COLORS = ['#1677ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2'];
-function colorFor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-const initialsOf = (name: string) =>
-  name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
-
 export function TaskForm({
   open,
   task,
@@ -44,6 +31,7 @@ export function TaskForm({
 }: TaskFormProps) {
   const [form] = Form.useForm<FormValues>();
   const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { message } = App.useApp();
 
@@ -52,10 +40,12 @@ export function TaskForm({
   // Assignees are needed in both modes now that the dialog can reassign.
   useEffect(() => {
     if (!open) return;
+    setLoadingUsers(true);
     authApi
       .fetchUsers()
       .then(setUsers)
-      .catch((err) => message.error(errorMessage(err, 'Could not load users')));
+      .catch((err) => message.error(errorMessage(err, 'Could not load users')))
+      .finally(() => setLoadingUsers(false));
   }, [open, message]);
 
   const close = () => {
@@ -111,22 +101,6 @@ export function TaskForm({
     }
   };
 
-  const assigneeOptions = users.map((u) => ({
-    value: u.id,
-    title: u.name,
-    label: (
-      <Space size={8}>
-        <Avatar size={22} style={{ backgroundColor: colorFor(u.id), fontSize: 10 }}>
-          {initialsOf(u.name)}
-        </Avatar>
-        {u.name}
-        <Tag color={u.role === 'admin' ? 'gold' : 'blue'} style={{ marginInlineEnd: 0 }}>
-          {u.role}
-        </Tag>
-      </Space>
-    ),
-  }));
-
   return (
     <Modal
       title={isEditing ? 'Edit task' : 'Create task'}
@@ -181,13 +155,7 @@ export function TaskForm({
           label="Assign to"
           rules={[{ required: true, message: 'Please choose an assignee' }]}
         >
-          <Select
-            placeholder="Select a user"
-            showSearch
-            optionFilterProp="title"
-            loading={users.length === 0}
-            options={assigneeOptions}
-          />
+          <AssigneePicker users={users} loading={loadingUsers} />
         </Form.Item>
       </Form>
     </Modal>
