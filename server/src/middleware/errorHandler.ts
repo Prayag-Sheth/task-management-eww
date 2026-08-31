@@ -43,6 +43,10 @@ export function errorHandler(
   } else if (isDuplicateKeyError(err)) {
     status = 409;
     message = 'A record with that value already exists';
+  } else if (isBodyParseError(err)) {
+    // Malformed JSON in the request body is a client error.
+    status = 400;
+    message = 'Request body is not valid JSON';
   }
 
   if (status >= 500) {
@@ -56,6 +60,16 @@ export function errorHandler(
   }
 
   res.status(status).json(body);
+}
+
+/** body-parser tags its own failures with `type: 'entity.parse.failed'`. */
+function isBodyParseError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'type' in err &&
+    (err as { type?: string }).type === 'entity.parse.failed'
+  );
 }
 
 function isDuplicateKeyError(err: unknown): boolean {
