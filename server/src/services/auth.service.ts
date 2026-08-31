@@ -75,7 +75,18 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   }
 
   if (input.name !== undefined) user.name = input.name;
-  if (input.role !== undefined) user.role = input.role;
+
+  // Demoting the last admin would leave nobody able to manage tasks or restore
+  // the role — an unrecoverable state without direct database access.
+  if (input.role !== undefined && input.role !== user.role) {
+    if (user.role === 'admin') {
+      const admins = await UserModel.countDocuments({ role: 'admin' });
+      if (admins <= 1) {
+        throw new AppError(409, 'Cannot demote the only admin account');
+      }
+    }
+    user.role = input.role;
+  }
   if (input.password) user.password = input.password; // re-hashed by the hook
 
   await user.save();

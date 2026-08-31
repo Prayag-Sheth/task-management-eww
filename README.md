@@ -240,8 +240,13 @@ hand-written CSS.
   `PATCH /tasks/:id/assign` covers reassignment afterwards.
 - **Deleting a user with assigned tasks is refused** with `409` and the task
   count. Cascading would silently destroy an admin's tasks, and orphaning would
-  leave a dangling `assignedTo`; the admin reassigns first. Deleting your own
-  account, or the last remaining admin, is refused for the same reason.
+  leave a dangling `assignedTo`; the admin reassigns first.
+- **Admins are equal — there is no hierarchy.** Any admin may promote, demote or
+  delete any other admin, including the one who promoted them. The brief defines
+  two roles rather than a chain of authority, so tracking who granted whom would
+  add state it never describes. Three guards keep the system usable: you cannot
+  delete your own account, you cannot delete anyone holding tasks, and the last
+  remaining admin cannot be deleted (which would lock everyone out).
 - **Offline assignees are not queued.** If the assignee is not connected, the
   socket emit is a no-op and they see the task on their next load. Persisted
   notifications were out of scope.
