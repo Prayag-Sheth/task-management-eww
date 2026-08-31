@@ -1,0 +1,22 @@
+import { api } from './client';
+import { ApiSuccess, CreateTaskInput, Task, TaskStatus } from '../types';
+
+export async function fetchTasks(): Promise<Task[]> {
+  const { data } = await api.get<ApiSuccess<Task[]>>('/tasks');
+  return data.data;
+}
+
+export async function createTask(input: CreateTaskInput): Promise<Task> {
+  const { data } = await api.post<ApiSuccess<Task>>('/tasks', input);
+  return data.data;
+}
+
+export async function updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
+  const { data } = await api.patch<ApiSuccess<Task>>(`/tasks/${id}/status`, { status });
+  return data.data;
+}
+
+export async function assignTask(id: string, assignedTo: string): Promise<Task> {
+  const { data } = await api.patch<ApiSuccess<Task>>(`/tasks/${id}/assign`, { assignedTo });
+  return data.data;
+}

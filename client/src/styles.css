@@ -1,0 +1,5 @@
+/* Ant Design ships its own reset; only page-level basics are needed here. */
+body {
+  margin: 0;
+  background: #f5f5f5;
+}
