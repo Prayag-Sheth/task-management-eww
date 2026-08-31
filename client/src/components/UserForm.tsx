@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Form, Input, Select, App, Alert } from 'antd';
+import { Modal, Form, Input, Select, App } from 'antd';
 import { errorMessage } from '../api/client';
 import { CreateUserInput, ROLES, UpdateUserInput, User } from '../types';
 
@@ -123,23 +123,16 @@ export function UserForm({ open, user, onClose, onCreate, onEdit }: UserFormProp
         <Form.Item
           name="role"
           label="Role"
+          tooltip="Admins create, assign and manage tasks and users. Users see and update only the tasks assigned to them."
           rules={[{ required: true, message: 'Role is required' }]}
         >
           <Select
             options={ROLES.map((r) => ({
               value: r,
-              label: r === 'admin' ? 'Admin — can create and assign tasks' : 'User — can update own tasks',
+              label: r === 'admin' ? 'Admin' : 'User',
             }))}
           />
         </Form.Item>
-
-        {isEditing && user?.role === 'admin' && (
-          <Alert
-            type="info"
-            showIcon
-            message="Changing this admin to a user removes their ability to manage tasks and users."
-          />
-        )}
       </Form>
     </Modal>
   );
