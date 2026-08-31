@@ -66,6 +66,7 @@ export function Tasks() {
           }}
           onCreate={createTask}
           onEdit={editTask}
+          onReassign={reassign}
         />
       )}
     </Space>

@@ -77,8 +77,9 @@ export async function updateTaskStatus(
     '_id' in assigned ? (assigned as UserDocument)._id : assigned
   );
 
-  // The spec says "Assigned user only" — admins are not exempt.
-  if (assignedToId !== actor.id) {
+  // The assignee owns their task's status; an admin may override it as part of
+  // managing all tasks. Any other user is refused.
+  if (assignedToId !== actor.id && actor.role !== 'admin') {
     throw new AppError(403, 'Only the assigned user can update this task');
   }
 

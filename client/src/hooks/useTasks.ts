@@ -107,6 +107,10 @@ export function useTasks() {
   );
 
   /** Admin-only: move a task to a different assignee. */
+  /**
+   * Rethrows after reporting, so a caller mid-save (the edit dialog) can keep
+   * itself open instead of closing as though the change had been applied.
+   */
   const reassign = useCallback(
     async (id: string, assignedTo: string) => {
       try {
@@ -115,6 +119,7 @@ export function useTasks() {
         message.success('Task reassigned');
       } catch (err) {
         message.error(errorMessage(err, 'Could not reassign task'));
+        throw err;
       }
     },
     [message]

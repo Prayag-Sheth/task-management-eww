@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Form, Input, Select, App, Alert } from 'antd';
 import { errorMessage } from '../api/client';
 import { CreateUserInput, ROLES, UpdateUserInput, User } from '../types';
@@ -25,15 +25,6 @@ export function UserForm({ open, user, onClose, onCreate, onEdit }: UserFormProp
   const { message } = App.useApp();
 
   const isEditing = Boolean(user);
-
-  useEffect(() => {
-    if (!open) return;
-    if (user) {
-      form.setFieldsValue({ name: user.name, email: user.email, role: user.role });
-    } else {
-      form.resetFields();
-    }
-  }, [open, user, form]);
 
   const close = () => {
     form.resetFields();
@@ -78,7 +69,22 @@ export function UserForm({ open, user, onClose, onCreate, onEdit }: UserFormProp
       confirmLoading={submitting}
       destroyOnClose
     >
-      <Form form={form} layout="vertical" preserve={false}>
+      <Form
+        form={form}
+        layout="vertical"
+        preserve={false}
+        /*
+         * initialValues, not a setFieldsValue effect: destroyOnClose unmounts
+         * the fields, so an effect on open would populate a form that is then
+         * recreated empty. The key remounts per user so these are re-applied.
+         */
+        key={user?.id ?? 'create'}
+        initialValues={
+          user
+            ? { name: user.name, email: user.email, role: user.role }
+            : { name: '', email: '', role: 'user' }
+        }
+      >
         <Form.Item
           name="name"
           label="Name"
@@ -117,7 +123,6 @@ export function UserForm({ open, user, onClose, onCreate, onEdit }: UserFormProp
         <Form.Item
           name="role"
           label="Role"
-          initialValue="user"
           rules={[{ required: true, message: 'Role is required' }]}
         >
           <Select

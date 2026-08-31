@@ -187,8 +187,8 @@ export function TaskList({
       width: 170,
       render: (_, task) => {
         const assignee = assigneeOf(task);
-        // Only the assigned user may change status — admins included, per spec.
-        const canEdit = assignee?.id === currentUser.id;
+        // The assignee owns their status; an admin may override any task.
+        const canEdit = assignee?.id === currentUser.id || isAdmin;
 
         return canEdit ? (
           <StatusSelect
