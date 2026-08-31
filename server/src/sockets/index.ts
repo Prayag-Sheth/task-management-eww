@@ -1,7 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { verifyToken } from '../utils/jwt';
-import { env } from '../config/env';
+import { isAllowedOrigin } from '../config/cors';
 import {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -22,7 +22,13 @@ const ADMIN_ROOM = 'role:admin';
 
 export function initSockets(httpServer: HttpServer): IOServer {
   io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>(httpServer, {
-    cors: { origin: env.clientUrl, credentials: true },
+    cors: {
+      origin: (origin, callback) =>
+        !origin || isAllowedOrigin(origin)
+          ? callback(null, true)
+          : callback(new Error('Origin not allowed by CORS')),
+      credentials: true,
+    },
   });
 
   // No anonymous sockets: a valid token is required at handshake.

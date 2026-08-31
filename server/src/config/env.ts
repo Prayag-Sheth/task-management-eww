@@ -19,4 +19,12 @@ export const env = {
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
+
+  /** CLIENT_URL accepts a comma-separated list of allowed origins. */
+  corsOrigins: (process.env.CLIENT_URL ?? 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean),
 } as const;
+
+export const isDev = env.nodeEnv !== 'production';

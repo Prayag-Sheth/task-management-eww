@@ -91,7 +91,7 @@ All accounts use the password **`password123`**.
 | `MONGODB_URI`    | MongoDB connection string            | `mongodb://127.0.0.1:27017/task_management` |
 | `JWT_SECRET`     | Secret used to sign tokens           | a long random string |
 | `JWT_EXPIRES_IN` | Token lifetime                       | `1d` |
-| `CLIENT_URL`     | Allowed CORS origin                  | `http://localhost:5173` |
+| `CLIENT_URL`     | Allowed CORS origin(s), comma-separated | `http://localhost:5173` |
 
 **`client/.env`**
 
