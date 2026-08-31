@@ -12,8 +12,9 @@ React · Vite · Ant Design
 
 **Admin**
 - Create tasks and assign them to any user
-- View all tasks
-- Reassign an existing task
+- View all tasks, filtered by status
+- Edit, reassign and delete tasks
+- Manage users: create, edit, change role, delete
 
 **User**
 - View only the tasks assigned to them
@@ -118,11 +119,16 @@ All responses use a consistent envelope:
 |---------|---------------------------|-------------------|-------------|
 | `POST`  | `/api/auth/login`         | Public            | Returns a JWT and the user |
 | `GET`   | `/api/auth/me`            | Authenticated     | The current user |
-| `GET`   | `/api/users`              | **Admin**         | Assignee list for the task form |
+| `GET`   | `/api/users`              | **Admin**         | User list with per-user task counts |
 | `POST`  | `/api/tasks`              | **Admin**         | Create and assign a task |
 | `GET`   | `/api/tasks`              | Authenticated     | Admin: all tasks · User: only their own |
 | `PATCH` | `/api/tasks/:id/status`   | **Assignee only** | Update a task's status |
+| `PATCH` | `/api/tasks/:id`          | **Admin**         | Edit title and/or description |
+| `DELETE`| `/api/tasks/:id`          | **Admin**         | Delete a task |
 | `PATCH` | `/api/tasks/:id/assign`   | **Admin**         | Reassign a task |
+| `POST`  | `/api/users`              | **Admin**         | Create a user |
+| `PATCH` | `/api/users/:id`          | **Admin**         | Edit name, email, role or password |
+| `DELETE`| `/api/users/:id`          | **Admin**         | Delete a user (see below) |
 
 **Status codes:** `400` validation or bad id · `401` missing/invalid/expired
 token · `403` insufficient permission · `404` not found · `409` duplicate.
@@ -136,7 +142,8 @@ they have open.
 | Event           | Direction       | Payload                          |
 |-----------------|-----------------|----------------------------------|
 | `task:assigned` | Server → client | `{ task, message }` — to the assignee only |
-| `task:updated`  | Server → client | `{ taskId, status, updatedBy }`  |
+| `task:updated`  | Server → client | `{ taskId, status, updatedBy }` — admins only |
+| `task:deleted`  | Server → client | `{ taskId }` — admins only |
 
 ---
 
@@ -217,6 +224,10 @@ hand-written CSS.
   populate an assignee dropdown without it. It is admin-only.
 - **Tasks are assigned at creation.** `assignedTo` is required, and
   `PATCH /tasks/:id/assign` covers reassignment afterwards.
+- **Deleting a user with assigned tasks is refused** with `409` and the task
+  count. Cascading would silently destroy an admin's tasks, and orphaning would
+  leave a dangling `assignedTo`; the admin reassigns first. Deleting your own
+  account, or the last remaining admin, is refused for the same reason.
 - **Offline assignees are not queued.** If the assignee is not connected, the
   socket emit is a no-op and they see the task on their next load. Persisted
   notifications were out of scope.
