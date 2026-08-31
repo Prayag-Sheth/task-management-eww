@@ -16,6 +16,11 @@ const SEED_USERS = [
   { name: 'Aisha Begum', email: 'aisha@example.com', role: 'user' as const },
   { name: 'Tom Wilson', email: 'tom@example.com', role: 'user' as const },
   { name: 'Nina Rodriguez', email: 'nina@example.com', role: 'user' as const },
+  { name: 'Rahul Verma', email: 'rahul@example.com', role: 'user' as const },
+  { name: 'Emily Carter', email: 'emily@example.com', role: 'user' as const },
+  { name: 'Omar Farouk', email: 'omar@example.com', role: 'user' as const },
+  { name: 'Lena Fischer', email: 'lena@example.com', role: 'user' as const },
+  { name: 'David Park', email: 'david@example.com', role: 'user' as const },
 ];
 
 /** assignee is an index into SEED_USERS. */
@@ -89,13 +94,13 @@ const SEED_TASKS: Array<{
     title: 'Set up CI pipeline',
     description: 'Typecheck, lint and build on every push.',
     status: 'todo',
-    assignee: 9,
+    assignee: 10,
   },
   {
     title: 'Optimise the task list query',
     description: 'Populate the assignee in one round trip and index the hot path.',
     status: 'todo',
-    assignee: 5,
+    assignee: 11,
   },
   {
     title: 'Write integration tests',
@@ -113,7 +118,7 @@ const SEED_TASKS: Array<{
     title: 'Audit dependency vulnerabilities',
     description: 'Run an audit, upgrade anything with a known advisory.',
     status: 'todo',
-    assignee: 7,
+    assignee: 12,
   },
 ];
 
