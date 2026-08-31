@@ -25,6 +25,15 @@ export default function App() {
             rowHoverBg: '#fafafa',
             cellPaddingBlock: 14,
           },
+          // A white-on-grey selected pill was too faint to spot; fill it with
+          // the primary colour so the active filter is unmistakable.
+          Segmented: {
+            itemSelectedBg: '#1677ff',
+            itemSelectedColor: '#fff',
+            itemHoverBg: '#e6f4ff',
+            trackBg: '#f0f0f0',
+            trackPadding: 3,
+          },
         },
       }}
     >

@@ -62,13 +62,21 @@ Open http://localhost:5173 and sign in.
 
 ## Demo accounts
 
-All accounts use the password **`password123`**.
+All accounts use the password **`password123`**. The seed creates **10 users**
+(2 admins, 8 users) and **15 tasks** spread across all three statuses.
 
-| Email               | Role  |
-|---------------------|-------|
-| `admin@example.com` | admin |
-| `john@example.com`  | user  |
-| `jane@example.com`  | user  |
+| Email                  | Role  |
+|------------------------|-------|
+| `admin@example.com`    | admin |
+| `priya@example.com`    | admin |
+| `john@example.com`     | user  |
+| `jane@example.com`     | user  |
+| `arjun@example.com`    | user  |
+| `sara@example.com`     | user  |
+| `michael@example.com`  | user  |
+| `aisha@example.com`    | user  |
+| `tom@example.com`      | user  |
+| `nina@example.com`     | user  |
 
 ### Seeing the real-time notification
 
