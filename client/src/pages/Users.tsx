@@ -42,6 +42,8 @@ export function Users() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<UserWithStats | null>(null);
+  /** Row whose delete confirmation is open, so its tooltip can be suppressed. */
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,8 +166,10 @@ export function Users() {
                 okText="Delete"
                 okButtonProps={{ danger: true }}
                 onConfirm={() => handleDelete(u.id)}
+                // Hide the tooltip while the confirm is open, or both show at once.
+                onOpenChange={(isOpen) => setConfirmingId(isOpen ? u.id : null)}
               >
-                <Tooltip title="Delete user">
+                <Tooltip title="Delete user" open={confirmingId === u.id ? false : undefined}>
                   <Button type="text" danger icon={<DeleteOutlined />} />
                 </Tooltip>
               </Popconfirm>

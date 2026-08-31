@@ -69,6 +69,8 @@ export function TaskList({
   const isAdmin = currentUser.role === 'admin';
   const [filter, setFilter] = useState<Filter>('all');
   const [users, setUsers] = useState<User[]>([]);
+  /** Row whose delete confirmation is open, so its tooltip can be suppressed. */
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin || !onReassign) return;
@@ -240,8 +242,13 @@ export function TaskList({
               okText="Delete"
               okButtonProps={{ danger: true }}
               onConfirm={() => onDelete(task.id)}
+              // Hide the tooltip while the confirm is open, or both show at once.
+              onOpenChange={(isOpen) => setConfirmingId(isOpen ? task.id : null)}
             >
-              <Tooltip title="Delete task">
+              <Tooltip
+                title="Delete task"
+                open={confirmingId === task.id ? false : undefined}
+              >
                 <Button type="text" danger icon={<DeleteOutlined />} />
               </Tooltip>
             </Popconfirm>
