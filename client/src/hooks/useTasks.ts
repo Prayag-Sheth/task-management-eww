@@ -66,18 +66,32 @@ export function useTasks() {
 
   const updateStatus = useCallback(
     async (id: string, status: TaskStatus) => {
-      const previous = tasks;
-      // Optimistic: show the new status immediately, roll back if it fails.
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+      let rollbackTo: TaskStatus | undefined;
+
+      // Optimistic: show the new status immediately. Capture the old status
+      // inside the updater so it reflects the state at the moment of the edit.
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          rollbackTo = t.status;
+          return { ...t, status };
+        })
+      );
+
       try {
         const updated = await taskApi.updateTaskStatus(id, status);
         setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
       } catch (err) {
-        setTasks(previous);
+        // Revert just this task, so events that arrived meanwhile survive.
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id && rollbackTo ? { ...t, status: rollbackTo } : t
+          )
+        );
         message.error(errorMessage(err, 'Could not update status'));
       }
     },
-    [tasks, message]
+    [message]
   );
 
   return { tasks, loading, error, reload: load, createTask, updateStatus };

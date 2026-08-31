@@ -17,6 +17,9 @@ let io: IOServer | null = null;
 /** Room name for a user. One room per user handles multiple tabs for free. */
 const roomFor = (userId: string) => `user:${userId}`;
 
+/** Admins additionally share a room, since they can see every task. */
+const ADMIN_ROOM = 'role:admin';
+
 export function initSockets(httpServer: HttpServer): IOServer {
   io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>(httpServer, {
     cors: { origin: env.clientUrl, credentials: true },
@@ -38,8 +41,9 @@ export function initSockets(httpServer: HttpServer): IOServer {
   });
 
   io.on('connection', (socket) => {
-    const { userId } = socket.data;
+    const { userId, role } = socket.data;
     socket.join(roomFor(userId));
+    if (role === 'admin') socket.join(ADMIN_ROOM);
     console.log(`Socket connected: ${socket.id} (user ${userId})`);
 
     socket.on('disconnect', () => {
@@ -61,8 +65,12 @@ export function emitTaskAssigned(assigneeId: string, task: Task): void {
   });
 }
 
+/**
+ * Status changes go to admins only — they are the only ones who can see every
+ * task. A global broadcast would leak task ids to users who cannot read them.
+ */
 export function emitTaskUpdated(task: Task, updatedBy: string): void {
-  io?.emit(SOCKET_EVENTS.TASK_UPDATED, {
+  io?.to(ADMIN_ROOM).emit(SOCKET_EVENTS.TASK_UPDATED, {
     taskId: task.id,
     status: task.status,
     updatedBy,
