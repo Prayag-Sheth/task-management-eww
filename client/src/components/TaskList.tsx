@@ -10,6 +10,7 @@ import {
   Popconfirm,
   Tooltip,
   Avatar,
+  Card,
 } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -272,14 +273,16 @@ export function TaskList({
         ]}
       />
 
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={visible}
-        loading={loading}
-        pagination={false}
-        locale={{ emptyText: <Empty description={emptyTextFor(currentUser.role, filter)} /> }}
-      />
+      <Card styles={{ body: { padding: '4px 16px' } }}>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={visible}
+          loading={loading}
+          pagination={false}
+          locale={{ emptyText: <Empty description={emptyTextFor(currentUser.role, filter)} /> }}
+        />
+      </Card>
     </Space>
   );
 }

@@ -14,7 +14,18 @@ export default function App() {
     <ConfigProvider
       theme={{
         token: { colorPrimary: '#1677ff', borderRadius: 6 },
-        components: { Table: { headerBg: '#fafafa' } },
+        components: {
+          // Plain list rather than a data grid: no header fill or cell
+          // dividers, just a light separator between rows.
+          Table: {
+            headerBg: 'transparent',
+            headerSplitColor: 'transparent',
+            headerColor: '#8c8c8c',
+            borderColor: '#f0f0f0',
+            rowHoverBg: '#fafafa',
+            cellPaddingBlock: 14,
+          },
+        },
       }}
     >
       <AntdApp>

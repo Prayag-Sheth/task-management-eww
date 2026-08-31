@@ -11,6 +11,7 @@ import {
   Alert,
   Empty,
   App,
+  Card,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -200,14 +201,16 @@ export function Users() {
 
       {error && <Alert type="error" message={error} showIcon />}
 
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={users}
-        loading={loading}
-        pagination={false}
-        locale={{ emptyText: <Empty description="No users found." /> }}
-      />
+      <Card styles={{ body: { padding: '4px 16px' } }}>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={users}
+          loading={loading}
+          pagination={false}
+          locale={{ emptyText: <Empty description="No users found." /> }}
+        />
+      </Card>
 
       <UserForm
         open={formOpen}
