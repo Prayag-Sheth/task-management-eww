@@ -57,8 +57,33 @@ export interface UpdateTaskStatusInput {
   status: TaskStatus;
 }
 
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+}
+
 export interface AssignTaskInput {
   assignedTo: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  email?: string;
+  role?: Role;
+  /** Optional: only sent when the admin is resetting the password. */
+  password?: string;
+}
+
+/** A user plus derived counts, for the admin user list. */
+export interface UserWithStats extends User {
+  taskCount: number;
 }
 
 // ---------- Response envelope ----------
@@ -88,6 +113,7 @@ export interface JwtPayload {
 export const SOCKET_EVENTS = {
   TASK_ASSIGNED: 'task:assigned',
   TASK_UPDATED: 'task:updated',
+  TASK_DELETED: 'task:deleted',
 } as const;
 
 export interface TaskAssignedPayload {
@@ -101,9 +127,14 @@ export interface TaskUpdatedPayload {
   updatedBy: string;
 }
 
+export interface TaskDeletedPayload {
+  taskId: string;
+}
+
 export interface ServerToClientEvents {
   'task:assigned': (payload: TaskAssignedPayload) => void;
   'task:updated': (payload: TaskUpdatedPayload) => void;
+  'task:deleted': (payload: TaskDeletedPayload) => void;
 }
 
 // No client-initiated events are needed: the client only listens.

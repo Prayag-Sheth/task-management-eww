@@ -54,3 +54,22 @@ export const assignTask = asyncHandler(async (req: Request, res: Response) => {
   );
   res.json({ success: true, data });
 });
+
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Title cannot be empty').max(200).optional(),
+    description: z.string().trim().max(2000).optional(),
+  })
+  .refine((v) => v.title !== undefined || v.description !== undefined, {
+    message: 'Provide a title or a description to update',
+  });
+
+export const updateTask = asyncHandler(async (req: Request, res: Response) => {
+  const data = await taskService.updateTask(req.params.id, req.body);
+  res.json({ success: true, data });
+});
+
+export const deleteTask = asyncHandler(async (req: Request, res: Response) => {
+  await taskService.deleteTask(req.params.id);
+  res.status(204).send();
+});

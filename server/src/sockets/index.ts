@@ -82,3 +82,8 @@ export function emitTaskUpdated(task: Task, updatedBy: string): void {
     updatedBy,
   });
 }
+
+/** Deletions go to admins; a user simply stops seeing the task on reload. */
+export function emitTaskDeleted(taskId: string): void {
+  io?.to(ADMIN_ROOM).emit(SOCKET_EVENTS.TASK_DELETED, { taskId });
+}

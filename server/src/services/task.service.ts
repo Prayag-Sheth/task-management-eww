@@ -2,9 +2,10 @@ import { Types } from 'mongoose';
 import { TaskModel } from '../models/Task';
 import { UserModel, UserDocument } from '../models/User';
 import { AppError } from '../utils/AppError';
-import { emitTaskAssigned, emitTaskUpdated } from '../sockets';
+import { emitTaskAssigned, emitTaskUpdated, emitTaskDeleted } from '../sockets';
 import {
   CreateTaskInput,
+  UpdateTaskInput,
   Role,
   Task,
   TaskStatus,
@@ -112,4 +113,27 @@ export async function assignTask(
   }
 
   return updated;
+}
+
+/** Admin-only: edit title and/or description. */
+export async function updateTask(
+  taskId: string,
+  input: UpdateTaskInput
+): Promise<Task> {
+  const task = await TaskModel.findById(taskId);
+  if (!task) throw new AppError(404, 'Task not found');
+
+  if (input.title !== undefined) task.title = input.title;
+  if (input.description !== undefined) task.description = input.description;
+
+  await task.save();
+  await task.populate('assignedTo');
+  return task.toDomain();
+}
+
+/** Admin-only: permanently remove a task. */
+export async function deleteTask(taskId: string): Promise<void> {
+  const deleted = await TaskModel.findByIdAndDelete(taskId);
+  if (!deleted) throw new AppError(404, 'Task not found');
+  emitTaskDeleted(taskId);
 }

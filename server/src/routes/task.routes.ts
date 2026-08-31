@@ -26,6 +26,15 @@ router.patch(
 );
 
 router.patch(
+  '/:id',
+  requireRole('admin'),
+  validate(taskController.updateTaskSchema),
+  taskController.updateTask
+);
+
+router.delete('/:id', requireRole('admin'), taskController.deleteTask);
+
+router.patch(
   '/:id/assign',
   requireRole('admin'),
   validate(taskController.assignTaskSchema),

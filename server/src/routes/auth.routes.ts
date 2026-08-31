@@ -11,6 +11,23 @@ router.get('/me', authenticate, authController.me);
 
 export default router;
 
-/** Mounted separately at /users — admin-only assignee list. */
+/** Mounted at /users. Every route is admin-only. */
 export const userRouter = Router();
-userRouter.get('/', authenticate, requireRole('admin'), authController.listUsers);
+
+userRouter.use(authenticate, requireRole('admin'));
+
+userRouter.get('/', authController.listUsersWithStats);
+
+userRouter.post(
+  '/',
+  validate(authController.createUserSchema),
+  authController.createUser
+);
+
+userRouter.patch(
+  '/:id',
+  validate(authController.updateUserSchema),
+  authController.updateUser
+);
+
+userRouter.delete('/:id', authController.deleteUser);
