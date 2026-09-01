@@ -101,14 +101,22 @@ export function useTasks() {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
     };
 
+    // A reassignment can move a task in or out of this list, so refetch rather
+    // than patching in place.
+    const onReassigned = () => {
+      void load(query);
+    };
+
     socket.on(SOCKET_EVENTS.TASK_ASSIGNED, onAssigned);
     socket.on(SOCKET_EVENTS.TASK_UPDATED, onUpdated);
     socket.on(SOCKET_EVENTS.TASK_DELETED, onDeleted);
+    socket.on(SOCKET_EVENTS.TASK_REASSIGNED, onReassigned);
 
     return () => {
       socket.off(SOCKET_EVENTS.TASK_ASSIGNED, onAssigned);
       socket.off(SOCKET_EVENTS.TASK_UPDATED, onUpdated);
       socket.off(SOCKET_EVENTS.TASK_DELETED, onDeleted);
+      socket.off(SOCKET_EVENTS.TASK_REASSIGNED, onReassigned);
     };
   }, [socket, notification, load, query]);
 
@@ -160,15 +168,17 @@ export function useTasks() {
   const reassign = useCallback(
     async (id: string, assignedTo: string) => {
       try {
-        const updated = await taskApi.assignTask(id, assignedTo);
-        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+        await taskApi.assignTask(id, assignedTo);
         message.success('Task reassigned');
+        // Socket events skip the actor, and the task may leave this list
+        // entirely, so refetch to keep rows and counts correct.
+        await load(query);
       } catch (err) {
         message.error(errorMessage(err, 'Could not reassign task'));
         throw err;
       }
     },
-    [message]
+    [message, load, query]
   );
 
   const editTask = useCallback(

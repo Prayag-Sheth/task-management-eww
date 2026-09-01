@@ -3,7 +3,12 @@ import { TaskModel } from '../models/Task';
 import { UserModel, UserDocument } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { escapeRegExp } from '../utils/regex';
-import { emitTaskAssigned, emitTaskUpdated, emitTaskDeleted } from '../sockets';
+import {
+  emitTaskAssigned,
+  emitTaskUpdated,
+  emitTaskDeleted,
+  emitTaskReassigned,
+} from '../sockets';
 import {
   CreateTaskInput,
   UpdateTaskInput,
@@ -37,11 +42,15 @@ export async function listTasks(
   const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(query.limit ?? 10)));
 
   // Access scope first — every other condition narrows within it.
+  //
+  // Ids are cast to ObjectId here rather than left as strings: find() casts
+  // against the schema automatically, but aggregate() does not, so a string id
+  // would silently match nothing in the counts pipeline.
   const scope: Record<string, unknown> =
-    actor.role === 'admin' ? {} : { assignedTo: actor.id };
+    actor.role === 'admin' ? {} : { assignedTo: new Types.ObjectId(actor.id) };
 
   if (query.assignedTo && actor.role === 'admin') {
-    scope.assignedTo = query.assignedTo;
+    scope.assignedTo = new Types.ObjectId(query.assignedTo);
   }
 
   const filter: Record<string, unknown> = { ...scope };
@@ -163,13 +172,23 @@ export async function assignTask(
   const assignee = await UserModel.findById(assignedTo);
   if (!assignee) throw new AppError(400, 'Assigned user does not exist');
 
+  const previous = task.assignedTo as Types.ObjectId | UserDocument;
+  const previousId = String('_id' in previous ? (previous as UserDocument)._id : previous);
+
   task.assignedTo = assignee._id;
   await task.save();
   await task.populate('assignedTo');
 
   const updated = task.toDomain();
-  if (assignee._id.toString() !== actor.id) {
-    emitTaskAssigned(assignee._id.toString(), updated);
+  const newId = assignee._id.toString();
+
+  if (newId !== actor.id) {
+    emitTaskAssigned(newId, updated);
+  }
+  // The task left the previous assignee's list, and admins see every task, so
+  // both need to refetch. Skip when the assignee did not actually change.
+  if (previousId !== newId) {
+    emitTaskReassigned(updated.id, previousId);
   }
 
   return updated;

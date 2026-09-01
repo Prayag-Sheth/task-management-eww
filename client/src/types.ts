@@ -167,6 +167,7 @@ export const SOCKET_EVENTS = {
   TASK_ASSIGNED: 'task:assigned',
   TASK_UPDATED: 'task:updated',
   TASK_DELETED: 'task:deleted',
+  TASK_REASSIGNED: 'task:reassigned',
 } as const;
 
 export interface TaskAssignedPayload {
@@ -184,10 +185,16 @@ export interface TaskDeletedPayload {
   taskId: string;
 }
 
+/** Sent to the previous assignee and to admins, so both lists refresh. */
+export interface TaskReassignedPayload {
+  taskId: string;
+}
+
 export interface ServerToClientEvents {
   'task:assigned': (payload: TaskAssignedPayload) => void;
   'task:updated': (payload: TaskUpdatedPayload) => void;
   'task:deleted': (payload: TaskDeletedPayload) => void;
+  'task:reassigned': (payload: TaskReassignedPayload) => void;
 }
 
 // No client-initiated events are needed: the client only listens.

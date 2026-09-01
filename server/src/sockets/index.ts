@@ -72,6 +72,17 @@ export function emitTaskAssigned(assigneeId: string, task: Task): void {
 }
 
 /**
+ * A reassignment changes who can see the task, so the previous assignee and
+ * every admin need to refresh. The new assignee gets task:assigned instead.
+ */
+export function emitTaskReassigned(taskId: string, previousAssigneeId?: string): void {
+  io?.to(ADMIN_ROOM).emit(SOCKET_EVENTS.TASK_REASSIGNED, { taskId });
+  if (previousAssigneeId) {
+    io?.to(roomFor(previousAssigneeId)).emit(SOCKET_EVENTS.TASK_REASSIGNED, { taskId });
+  }
+}
+
+/**
  * Status changes go to admins only — they are the only ones who can see every
  * task. A global broadcast would leak task ids to users who cannot read them.
  */

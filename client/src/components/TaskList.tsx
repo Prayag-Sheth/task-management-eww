@@ -193,6 +193,11 @@ export function TaskList({
                 if (!open) setAssigneeQuery('');
               }}
               notFoundContent={null}
+              // While searching, the caret would otherwise sit on top of the
+              // selected avatar. Render the closed state as plain text and let
+              // the search box take over cleanly once open.
+              labelRender={({ label }) => label}
+              optionLabelProp="labelText"
               // The current assignee may fall outside the fetched page, so keep
               // them as an option or the Select would render a bare id.
               options={[
@@ -200,6 +205,7 @@ export function TaskList({
                 ...users,
               ].map((u) => ({
                 value: u.id,
+                labelText: u.name,
                 label: (
                   <Space size={6}>
                     <Avatar size={20} style={{ backgroundColor: colorFor(u.id), fontSize: 10 }}>

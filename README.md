@@ -180,6 +180,7 @@ they have open.
 | `task:assigned` | Server → client | `{ task, message }` — to the assignee only |
 | `task:updated`  | Server → client | `{ taskId, status, updatedBy }` — admins only |
 | `task:deleted`  | Server → client | `{ taskId }` — admins only |
+| `task:reassigned` | Server → client | `{ taskId }` — previous assignee and admins |
 
 ---
 
