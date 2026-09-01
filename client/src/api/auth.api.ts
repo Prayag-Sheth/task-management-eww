@@ -2,6 +2,9 @@ import { api } from './client';
 import {
   ApiSuccess,
   CreateUserInput,
+  PageMeta,
+  Paginated,
+  UserListQuery,
   LoginInput,
   LoginResponse,
   UpdateUserInput,
@@ -26,9 +29,15 @@ export async function fetchUsers(): Promise<User[]> {
 }
 
 /** Admin-only user management. */
-export async function fetchUsersWithStats(): Promise<UserWithStats[]> {
-  const { data } = await api.get<ApiSuccess<UserWithStats[]>>('/users');
-  return data.data;
+interface UserListResponse extends ApiSuccess<UserWithStats[]> {
+  meta: PageMeta;
+}
+
+export async function fetchUsersWithStats(
+  query: UserListQuery = {}
+): Promise<Paginated<UserWithStats>> {
+  const { data } = await api.get<UserListResponse>('/users', { params: query });
+  return { items: data.data, meta: data.meta };
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {

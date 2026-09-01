@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table,
   Empty,
@@ -11,15 +11,33 @@ import {
   Tooltip,
   Avatar,
   Card,
+  Input,
 } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { SorterResult } from 'antd/es/table/interface';
 import { StatusSelect, StatusTag } from './StatusSelect';
 import * as authApi from '../api/auth.api';
-import { Role, Task, TaskStatus, TASK_STATUSES, User, assigneeOf } from '../types';
+import { useDebounced } from '../hooks/useDebounced';
+import {
+  PageMeta,
+  Role,
+  Task,
+  TaskListQuery,
+  TaskSortField,
+  TaskStatus,
+  TASK_STATUSES,
+  TaskStatusCounts,
+  User,
+  assigneeOf,
+} from '../types';
 
 interface TaskListProps {
   tasks: Task[];
+  meta: PageMeta;
+  counts: TaskStatusCounts;
+  query: TaskListQuery;
+  onQueryChange: (patch: Partial<TaskListQuery>) => void;
   loading: boolean;
   currentUser: User;
   onStatusChange: (id: string, status: TaskStatus) => void;
@@ -28,22 +46,20 @@ interface TaskListProps {
   onDelete?: (id: string) => void;
 }
 
-type Filter = 'all' | TaskStatus;
-
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: 'To Do',
   'in-progress': 'In Progress',
   done: 'Done',
 };
 
-const emptyTextFor = (role: Role, filter: Filter) => {
-  if (filter !== 'all') return `No ${STATUS_LABELS[filter].toLowerCase()} tasks.`;
+const emptyTextFor = (role: Role, query: TaskListQuery) => {
+  if (query.search) return `No tasks match "${query.search}".`;
+  if (query.status) return `No ${STATUS_LABELS[query.status].toLowerCase()} tasks.`;
   return role === 'admin'
     ? 'No tasks yet — create one to get started.'
     : 'No tasks assigned to you yet.';
 };
 
-/** Deterministic colour per user, so an avatar is recognisable at a glance. */
 const AVATAR_COLORS = ['#1677ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#13c2c2'];
 function colorFor(id: string): string {
   let hash = 0;
@@ -60,6 +76,10 @@ const initialsOf = (name: string) =>
 
 export function TaskList({
   tasks,
+  meta,
+  counts,
+  query,
+  onQueryChange,
   loading,
   currentUser,
   onStatusChange,
@@ -68,54 +88,52 @@ export function TaskList({
   onDelete,
 }: TaskListProps) {
   const isAdmin = currentUser.role === 'admin';
-  const [filter, setFilter] = useState<Filter>('all');
   const [users, setUsers] = useState<User[]>([]);
-  /** Row whose delete confirmation is open, so its tooltip can be suppressed. */
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  // Local so typing stays responsive; the debounced value drives the request.
+  const [searchText, setSearchText] = useState(query.search ?? '');
+  const debouncedSearch = useDebounced(searchText, 350);
+
+  useEffect(() => {
+    if ((query.search ?? '') === debouncedSearch) return;
+    onQueryChange({ search: debouncedSearch || undefined });
+    // Only the debounced value should trigger a fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (!isAdmin || !onReassign) return;
     authApi.fetchUsers().then(setUsers).catch(() => setUsers([]));
   }, [isAdmin, onReassign]);
 
-  /**
-   * Rows are ordered by first-seen id, not by the live task order. Without this
-   * a status or assignee change re-sorts the table and the row jumps out from
-   * under the pointer mid-interaction.
-   */
-  const orderRef = useRef<string[]>([]);
-  const ordered = useMemo(() => {
-    const known = new Set(orderRef.current);
-    const additions = tasks.map((t) => t.id).filter((id) => !known.has(id));
-    // New tasks (including ones arriving over the socket) go to the top.
-    orderRef.current = [...additions, ...orderRef.current];
+  const handleTableChange = (
+    _pagination: TablePaginationConfig,
+    _filters: unknown,
+    sorter: SorterResult<Task> | SorterResult<Task>[]
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (!s?.order) {
+      onQueryChange({ sortBy: 'createdAt', order: 'desc' });
+      return;
+    }
+    onQueryChange({
+      sortBy: s.field as TaskSortField,
+      order: s.order === 'ascend' ? 'asc' : 'desc',
+    });
+  };
 
-    const byId = new Map(tasks.map((t) => [t.id, t]));
-    orderRef.current = orderRef.current.filter((id) => byId.has(id));
-    return orderRef.current.map((id) => byId.get(id)!);
-  }, [tasks]);
-
-  const visible = useMemo(
-    () => (filter === 'all' ? ordered : ordered.filter((t) => t.status === filter)),
-    [ordered, filter]
-  );
-
-  const counts = useMemo(() => {
-    const base: Record<Filter, number> = {
-      all: tasks.length,
-      todo: 0,
-      'in-progress': 0,
-      done: 0,
-    };
-    for (const t of tasks) base[t.status] += 1;
-    return base;
-  }, [tasks]);
+  /** AntD wants 'ascend'/'descend'; the query carries 'asc'/'desc'. */
+  const sortOrderFor = (field: TaskSortField) =>
+    query.sortBy === field ? (query.order === 'asc' ? ('ascend' as const) : ('descend' as const)) : null;
 
   const columns: ColumnsType<Task> = [
     {
       title: 'Task',
       dataIndex: 'title',
       key: 'title',
+      sorter: true,
+      sortOrder: sortOrderFor('title'),
       render: (title: string, task) => (
         <div style={{ maxWidth: 420 }}>
           <Typography.Text strong style={{ display: 'block' }}>
@@ -169,10 +187,7 @@ export function TaskList({
 
         return (
           <Space size={8}>
-            <Avatar
-              size={24}
-              style={{ backgroundColor: colorFor(assignee.id), fontSize: 11 }}
-            >
+            <Avatar size={24} style={{ backgroundColor: colorFor(assignee.id), fontSize: 11 }}>
               {initialsOf(assignee.name)}
             </Avatar>
             {assignee.id === currentUser.id ? (
@@ -187,7 +202,10 @@ export function TaskList({
     {
       title: 'Status',
       key: 'status',
+      dataIndex: 'status',
       width: 170,
+      sorter: true,
+      sortOrder: sortOrderFor('status'),
       render: (_, task) => {
         const assignee = assigneeOf(task);
         // The assignee owns their status; an admin may override any task.
@@ -211,8 +229,10 @@ export function TaskList({
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 110,
+      width: 120,
       responsive: ['lg'],
+      sorter: true,
+      sortOrder: sortOrderFor('createdAt'),
       render: (iso: string) => (
         <Tooltip title={new Date(iso).toLocaleString()}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -246,10 +266,7 @@ export function TaskList({
               // Hide the tooltip while the confirm is open, or both show at once.
               onOpenChange={(isOpen) => setConfirmingId(isOpen ? task.id : null)}
             >
-              <Tooltip
-                title="Delete task"
-                open={confirmingId === task.id ? false : undefined}
-              >
+              <Tooltip title="Delete task" open={confirmingId === task.id ? false : undefined}>
                 <Button type="text" danger icon={<DeleteOutlined />} />
               </Tooltip>
             </Popconfirm>
@@ -261,26 +278,48 @@ export function TaskList({
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Segmented
-        value={filter}
-        onChange={(v) => setFilter(v as Filter)}
-        options={[
-          { label: `All (${counts.all})`, value: 'all' },
-          ...TASK_STATUSES.map((s) => ({
-            label: `${STATUS_LABELS[s]} (${counts[s]})`,
-            value: s,
-          })),
-        ]}
-      />
+      <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+        <Segmented
+          value={query.status ?? 'all'}
+          onChange={(v) =>
+            onQueryChange({ status: v === 'all' ? undefined : (v as TaskStatus) })
+          }
+          options={[
+            { label: `All (${counts.all})`, value: 'all' },
+            ...TASK_STATUSES.map((s) => ({
+              label: `${STATUS_LABELS[s]} (${counts[s]})`,
+              value: s,
+            })),
+          ]}
+        />
+
+        <Input
+          allowClear
+          placeholder="Search tasks"
+          prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 260 }}
+        />
+      </Space>
 
       <Card styles={{ body: { padding: '4px 16px' } }}>
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={visible}
+          dataSource={tasks}
           loading={loading}
-          pagination={false}
-          locale={{ emptyText: <Empty description={emptyTextFor(currentUser.role, filter)} /> }}
+          onChange={handleTableChange}
+          pagination={{
+            current: meta.page,
+            pageSize: meta.limit,
+            total: meta.total,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            showTotal: (total, range) => `${range[0]}–${range[1]} of ${total}`,
+            onChange: (page, pageSize) => onQueryChange({ page, limit: pageSize }),
+          }}
+          locale={{ emptyText: <Empty description={emptyTextFor(currentUser.role, query)} /> }}
         />
       </Card>
     </Space>

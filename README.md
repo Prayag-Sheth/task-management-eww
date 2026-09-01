@@ -132,9 +132,10 @@ All responses use a consistent envelope:
 |---------|---------------------------|-------------------|-------------|
 | `POST`  | `/api/auth/login`         | Public            | Returns a JWT and the user |
 | `GET`   | `/api/auth/me`            | Authenticated     | The current user |
-| `GET`   | `/api/users`              | **Admin**         | User list with per-user task counts |
+| `GET`   | `/api/users`              | **Admin**         | Paged user list with task counts |
+| `GET`   | `/api/users/all`          | **Admin**         | Unpaged list, for assignee pickers |
 | `POST`  | `/api/tasks`              | **Admin**         | Create and assign a task |
-| `GET`   | `/api/tasks`              | Authenticated     | Admin: all tasks · User: only their own |
+| `GET`   | `/api/tasks`              | Authenticated     | Admin: all tasks · User: only their own. Paged |
 | `PATCH` | `/api/tasks/:id/status`   | **Assignee or admin** | Update a task's status |
 | `PATCH` | `/api/tasks/:id`          | **Admin**         | Edit title and/or description |
 | `DELETE`| `/api/tasks/:id`          | **Admin**         | Delete a task |
@@ -142,6 +143,28 @@ All responses use a consistent envelope:
 | `POST`  | `/api/users`              | **Admin**         | Create a user |
 | `PATCH` | `/api/users/:id`          | **Admin**         | Edit name, email, role or password |
 | `DELETE`| `/api/users/:id`          | **Admin**         | Delete a user (see below) |
+
+### List query parameters
+
+`GET /api/tasks` and `GET /api/users` both accept:
+
+| Param | Description |
+|-------|-------------|
+| `page` | 1-based page number (default `1`) |
+| `limit` | Rows per page, max 100 (default `10`) |
+| `search` | Tasks: title and description · Users: name and email |
+| `sortBy` | Tasks: `createdAt`, `title`, `status` · Users: `name`, `email`, `role`, `taskCount` |
+| `order` | `asc` or `desc` |
+| `status` | Tasks only — filter by status |
+| `role` | Users only — filter by role |
+
+Responses carry a `meta` object (`page`, `limit`, `total`, `totalPages`); the task
+list also returns `counts` per status for the whole result set, so the filter tabs
+show real totals rather than only what is on the current page.
+
+Search terms are escaped before use, and `sortBy` is restricted to the fields
+listed above. Access scoping is applied before any filter, so a user passing
+`assignedTo` still sees only their own tasks.
 
 **Status codes:** `400` validation or bad id · `401` missing/invalid/expired
 token · `403` insufficient permission · `404` not found · `409` duplicate.

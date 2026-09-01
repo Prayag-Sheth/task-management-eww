@@ -2,14 +2,23 @@ import { api } from './client';
 import {
   ApiSuccess,
   CreateTaskInput,
+  PageMeta,
   Task,
+  TaskListQuery,
+  TaskListResult,
   TaskStatus,
+  TaskStatusCounts,
   UpdateTaskInput,
 } from '../types';
 
-export async function fetchTasks(): Promise<Task[]> {
-  const { data } = await api.get<ApiSuccess<Task[]>>('/tasks');
-  return data.data;
+interface TaskListResponse extends ApiSuccess<Task[]> {
+  meta: PageMeta;
+  counts: TaskStatusCounts;
+}
+
+export async function fetchTasks(query: TaskListQuery = {}): Promise<TaskListResult> {
+  const { data } = await api.get<TaskListResponse>('/tasks', { params: query });
+  return { items: data.data, meta: data.meta, counts: data.counts };
 }
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {

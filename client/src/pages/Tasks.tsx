@@ -9,8 +9,20 @@ import { Task } from '../types';
 
 export function Tasks() {
   const { user } = useAuth();
-  const { tasks, loading, error, createTask, updateStatus, reassign, editTask, removeTask } =
-    useTasks();
+  const {
+    tasks,
+    meta,
+    counts,
+    query,
+    updateQuery,
+    loading,
+    error,
+    createTask,
+    updateStatus,
+    reassign,
+    editTask,
+    removeTask,
+  } = useTasks();
   const [formOpen, setFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -34,6 +46,7 @@ export function Tasks() {
       <Space style={{ justifyContent: 'space-between', width: '100%' }}>
         <Typography.Text type="secondary">
           {isAdmin ? 'All tasks' : 'Tasks assigned to you'}
+          {meta.total > 0 && ` · ${meta.total}`}
         </Typography.Text>
 
         {/* Role-based UI: only an admin can create and assign. */}
@@ -48,6 +61,10 @@ export function Tasks() {
 
       <TaskList
         tasks={tasks}
+        meta={meta}
+        counts={counts}
+        query={query}
+        onQueryChange={updateQuery}
         loading={loading}
         currentUser={user}
         onStatusChange={updateStatus}
