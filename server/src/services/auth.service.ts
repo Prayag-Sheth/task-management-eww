@@ -37,10 +37,44 @@ export async function getUserById(id: string): Promise<User> {
   return user.toDomain();
 }
 
-/** Assignee list for the admin's task form. */
-export async function listUsers(): Promise<User[]> {
-  const users = await UserModel.find().sort({ name: 1 });
-  return users.map((u) => u.toDomain());
+/**
+ * Assignee options for a picker: a searchable page rather than the whole
+ * directory, so a large organisation does not ship thousands of rows to render
+ * one dropdown.
+ *
+ * ensureIds keeps already-selected people in the result even when they fall
+ * outside the current search, so a selection never renders as a bare id.
+ */
+export async function listAssignableUsers(
+  search?: string,
+  limit = 20,
+  ensureIds: string[] = []
+): Promise<Paginated<User>> {
+  const capped = Math.min(50, Math.max(1, Math.floor(limit)));
+  const match: Record<string, unknown> = {};
+
+  if (search?.trim()) {
+    const rx = new RegExp(escapeRegExp(search.trim()), 'i');
+    match.$or = [{ name: rx }, { email: rx }];
+  }
+
+  const [found, total] = await Promise.all([
+    UserModel.find(match).sort({ name: 1 }).limit(capped),
+    UserModel.countDocuments(match),
+  ]);
+
+  const items = found.map((u) => u.toDomain());
+
+  const missing = ensureIds.filter((id) => !items.some((u) => u.id === id));
+  if (missing.length > 0) {
+    const pinned = await UserModel.find({ _id: { $in: missing } });
+    items.unshift(...pinned.map((u) => u.toDomain()));
+  }
+
+  return {
+    items,
+    meta: { page: 1, limit: capped, total, totalPages: Math.max(1, Math.ceil(total / capped)) },
+  };
 }
 
 /**

@@ -133,7 +133,7 @@ All responses use a consistent envelope:
 | `POST`  | `/api/auth/login`         | Public            | Returns a JWT and the user |
 | `GET`   | `/api/auth/me`            | Authenticated     | The current user |
 | `GET`   | `/api/users`              | **Admin**         | Paged user list with task counts |
-| `GET`   | `/api/users/all`          | **Admin**         | Unpaged list, for assignee pickers |
+| `GET`   | `/api/users/assignable`   | **Admin**         | Searchable page of assignees (`search`, `limit`, `ensure`) |
 | `POST`  | `/api/tasks`              | **Admin**         | Create and assign a task |
 | `GET`   | `/api/tasks`              | Authenticated     | Admin: all tasks · User: only their own. Paged |
 | `PATCH` | `/api/tasks/:id/status`   | **Assignee or admin** | Update a task's status |

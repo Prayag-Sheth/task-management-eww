@@ -91,9 +91,10 @@ export function Users() {
     sorter: SorterResult<UserWithStats> | SorterResult<UserWithStats>[]
   ) => {
     const srt = Array.isArray(sorter) ? sorter[0] : sorter;
+    // Sorting reorders the same set, so keep the current page.
     setQuery((prev) => ({
       ...prev,
-      sortBy: (srt?.order ? (srt.field as UserSortField) : 'name'),
+      sortBy: srt?.order ? (srt.field as UserSortField) : 'name',
       order: srt?.order === 'descend' ? 'desc' : 'asc',
     }));
   };
@@ -272,7 +273,12 @@ export function Users() {
             pageSizeOptions: ['10', '20', '50'],
             showTotal: (total, range) => `${range[0]}–${range[1]} of ${total}`,
             onChange: (page, pageSize) =>
-              setQuery((prev) => ({ ...prev, page, limit: pageSize })),
+              setQuery((prev) => ({
+                ...prev,
+                // A bigger page size can put the old page past the end.
+                page: pageSize !== prev.limit ? 1 : page,
+                limit: pageSize,
+              })),
           }}
           locale={{
             emptyText: (

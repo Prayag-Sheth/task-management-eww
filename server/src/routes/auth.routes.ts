@@ -18,8 +18,8 @@ userRouter.use(authenticate, requireRole('admin'));
 
 userRouter.get('/', authController.listUsersWithStats);
 
-// Unpaged list for assignee pickers, which need every option at once.
-userRouter.get('/all', authController.listUsers);
+// Searchable page for assignee pickers, so a large directory is never sent whole.
+userRouter.get('/assignable', authController.listAssignableUsers);
 
 userRouter.post(
   '/',

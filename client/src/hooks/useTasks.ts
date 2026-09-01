@@ -58,13 +58,25 @@ export function useTasks() {
 
   const reload = useCallback(() => load(query), [load, query]);
 
-  /** Merges a partial query, resetting to page 1 unless the page itself moved. */
+  /**
+   * Merges a partial query. Changing what the result set contains (search,
+   * status) returns to page 1, since the old page may no longer exist. Changing
+   * only how it is ordered keeps your place.
+   */
   const updateQuery = useCallback((patch: Partial<TaskListQuery>) => {
-    setQuery((prev) => ({
-      ...prev,
-      ...patch,
-      page: patch.page ?? 1,
-    }));
+    setQuery((prev) => {
+      const narrows =
+        ('search' in patch && patch.search !== prev.search) ||
+        ('status' in patch && patch.status !== prev.status) ||
+        ('assignedTo' in patch && patch.assignedTo !== prev.assignedTo) ||
+        ('limit' in patch && patch.limit !== prev.limit);
+
+      return {
+        ...prev,
+        ...patch,
+        page: patch.page ?? (narrows ? 1 : prev.page),
+      };
+    });
   }, []);
 
   // Realtime: refetch rather than splicing, so paging, sorting and counts stay

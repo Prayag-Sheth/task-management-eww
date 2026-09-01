@@ -21,9 +21,18 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
-export const listUsers = asyncHandler(async (_req: Request, res: Response) => {
-  const data = await authService.listUsers();
-  res.json({ success: true, data });
+export const assignableQuerySchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  /** Comma-separated ids to keep in the result regardless of the search. */
+  ensure: z.string().optional(),
+});
+
+export const listAssignableUsers = asyncHandler(async (req: Request, res: Response) => {
+  const { search, limit, ensure } = assignableQuerySchema.parse(req.query);
+  const ensureIds = ensure ? ensure.split(',').filter(Boolean) : [];
+  const result = await authService.listAssignableUsers(search, limit ?? 20, ensureIds);
+  res.json({ success: true, data: result.items, meta: result.meta });
 });
 
 export const createUserSchema = z.object({

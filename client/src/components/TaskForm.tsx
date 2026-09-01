@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Form, Input, App } from 'antd';
 import { AssigneePicker } from './AssigneePicker';
-import * as authApi from '../api/auth.api';
 import { errorMessage } from '../api/client';
-import { CreateTaskInput, Task, UpdateTaskInput, User, assigneeOf } from '../types';
+import { CreateTaskInput, Task, UpdateTaskInput, assigneeOf } from '../types';
 
 interface TaskFormProps {
   open: boolean;
@@ -30,23 +29,10 @@ export function TaskForm({
   onReassign,
 }: TaskFormProps) {
   const [form] = Form.useForm<FormValues>();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { message } = App.useApp();
 
   const isEditing = Boolean(task);
-
-  // Assignees are needed in both modes now that the dialog can reassign.
-  useEffect(() => {
-    if (!open) return;
-    setLoadingUsers(true);
-    authApi
-      .fetchUsers()
-      .then(setUsers)
-      .catch((err) => message.error(errorMessage(err, 'Could not load users')))
-      .finally(() => setLoadingUsers(false));
-  }, [open, message]);
 
   const close = () => {
     form.resetFields();
@@ -157,7 +143,7 @@ export function TaskForm({
           label="Assign to"
           rules={[{ required: true, message: 'Please choose an assignee' }]}
         >
-          <AssigneePicker users={users} loading={loadingUsers} />
+          <AssigneePicker />
         </Form.Item>
       </Form>
     </Modal>

@@ -23,9 +23,23 @@ export async function fetchMe(): Promise<User> {
 }
 
 /** Admin-only: assignee list for the task form. */
-export async function fetchUsers(): Promise<User[]> {
-  const { data } = await api.get<ApiSuccess<User[]>>('/users/all');
-  return data.data;
+/**
+ * A searchable page of assignable users. `ensure` pins specific ids into the
+ * result so a current selection is never dropped by the search.
+ */
+export async function fetchAssignableUsers(params: {
+  search?: string;
+  limit?: number;
+  ensure?: string[];
+} = {}): Promise<{ items: User[]; total: number }> {
+  const { data } = await api.get<UserListResponse>('/users/assignable', {
+    params: {
+      search: params.search || undefined,
+      limit: params.limit,
+      ensure: params.ensure?.length ? params.ensure.join(',') : undefined,
+    },
+  });
+  return { items: data.data as User[], total: data.meta.total };
 }
 
 /** Admin-only user management. */

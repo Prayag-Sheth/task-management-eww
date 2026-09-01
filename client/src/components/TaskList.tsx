@@ -102,10 +102,26 @@ export function TaskList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
+  // A page of assignee options, narrowed by the dropdown's own search. Fetching
+  // the whole directory here would not survive a large organisation.
+  const [assigneeQuery, setAssigneeQuery] = useState('');
+  const debouncedAssigneeQuery = useDebounced(assigneeQuery, 350);
+
   useEffect(() => {
     if (!isAdmin || !onReassign) return;
-    authApi.fetchUsers().then(setUsers).catch(() => setUsers([]));
-  }, [isAdmin, onReassign]);
+    let cancelled = false;
+    authApi
+      .fetchAssignableUsers({ search: debouncedAssigneeQuery, limit: 20 })
+      .then((r) => {
+        if (!cancelled) setUsers(r.items);
+      })
+      .catch(() => {
+        if (!cancelled) setUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, onReassign, debouncedAssigneeQuery]);
 
   const handleTableChange = (
     _pagination: TablePaginationConfig,
@@ -170,7 +186,19 @@ export function TaskList({
               onChange={(next) => onReassign(task.id, next)}
               style={{ width: 190 }}
               variant="borderless"
-              options={users.map((u) => ({
+              showSearch
+              filterOption={false}
+              onSearch={setAssigneeQuery}
+              onDropdownVisibleChange={(open) => {
+                if (!open) setAssigneeQuery('');
+              }}
+              notFoundContent={null}
+              // The current assignee may fall outside the fetched page, so keep
+              // them as an option or the Select would render a bare id.
+              options={[
+                ...(users.some((u) => u.id === assignee.id) ? [] : [assignee]),
+                ...users,
+              ].map((u) => ({
                 value: u.id,
                 label: (
                   <Space size={6}>
