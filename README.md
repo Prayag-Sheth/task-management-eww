@@ -27,7 +27,7 @@ React · Vite · Ant Design
 
 - **Node.js 18+**
 - **MongoDB** running locally on `mongodb://127.0.0.1:27017`
-  (a standalone instance is fine — no replica set required)
+  (a standalone instance is fine, no replica set required)
 
 MongoDB Atlas also works; just point `MONGODB_URI` at your cluster.
 
@@ -74,8 +74,8 @@ All accounts use the password **`password123`**. The seed creates **15 users**
 
 | Email                  | Role  | Notes |
 |------------------------|-------|-------|
-| `admin@example.com`    | admin | Primary admin — use this one to try the app |
-| `admin2@example.com`    | admin | Secondary admin — shows two admins coexisting |
+| `admin@example.com`    | admin | Primary admin, use this one to try the app |
+| `admin2@example.com`    | admin | Secondary admin, shows two admins coexisting |
 | `john@example.com`     | user  |       |
 | `jane@example.com`     | user  |       |
 | `arjun@example.com`    | user  |       |
@@ -162,8 +162,8 @@ All responses use a consistent envelope:
 | `search` | Tasks: title and description · Users: name and email |
 | `sortBy` | Tasks: `createdAt`, `title`, `status` · Users: `name`, `email`, `role`, `taskCount` |
 | `order` | `asc` or `desc` |
-| `status` | Tasks only — filter by status |
-| `role` | Users only — filter by role |
+| `status` | Tasks only. Filter by status |
+| `role` | Users only. Filter by role |
 
 Responses carry a `meta` object (`page`, `limit`, `total`, `totalPages`); the task
 list also returns `counts` per status for the whole result set, so the filter tabs
@@ -184,10 +184,10 @@ they have open.
 
 | Event           | Direction       | Payload                          |
 |-----------------|-----------------|----------------------------------|
-| `task:assigned` | Server → client | `{ task, message }` — to the assignee only |
-| `task:updated`  | Server → client | `{ taskId, status, updatedBy }` — admins only |
-| `task:deleted`  | Server → client | `{ taskId }` — admins only |
-| `task:reassigned` | Server → client | `{ taskId }` — previous assignee and admins |
+| `task:assigned` | Server → client | `{ task, message }` (to the assignee only) |
+| `task:updated`  | Server → client | `{ taskId, status, updatedBy }` (admins only) |
+| `task:deleted`  | Server → client | `{ taskId }` (admins only) |
+| `task:reassigned` | Server → client | `{ taskId }` (previous assignee and admins) |
 
 ---
 
@@ -216,24 +216,15 @@ client/src
 
 Three separate layers, each with one job:
 
-1. **`middleware/auth.ts`** — is the token valid, and does the user still exist?
-2. **`middleware/requireRole.ts`** — does the role permit this route?
-3. **`services/task.service.ts`** — ownership. Read scoping (`admin` sees all,
+1. **`middleware/auth.ts`**: is the token valid, and does the user still exist?
+2. **`middleware/requireRole.ts`**: does the role permit this route?
+3. **`services/task.service.ts`**: ownership. Read scoping (`admin` sees all,
    a user sees only their own) and the assignee check both live here, because
    they depend on the data rather than the route.
 
 ---
 
 ## Design decisions
-
-**Mongoose rather than Prisma.** Prisma's MongoDB connector requires a replica
-set, so the app would refuse to start against a standalone local `mongod`.
-Mongoose connects to any instance, which keeps setup to one command.
-
-**Two folders rather than a monorepo.** There are only two deployables and no
-third consumer of shared code. Workspace tooling (Turborepo, Nx, pnpm workspaces)
-would add build steps and module-resolution complexity without changing what
-ships.
 
 **Shared types are duplicated, not packaged.** `server/src/types.ts` and
 `client/src/types.ts` are copies of the same contract. In a longer-lived project
@@ -245,8 +236,9 @@ between a reviewer and a running app. The two files must be edited together.
 legal TypeScript override. An explicit serialiser keeps the model fully typed;
 a `toJSON` transform still strips the password hash as a safety net.
 
-**React Context rather than Redux.** There are two pieces of global state (the
-session and the socket). A store would be more machinery than the problem needs.
+**React Context rather than Redux.** There are two pieces of global state, the
+session and the socket. A store would add more moving parts than the problem
+calls for.
 
 **One Socket.io room per user** rather than a socket registry. Rooms handle
 multiple tabs per user for free and need no bookkeeping on disconnect.
@@ -259,12 +251,7 @@ hand-written CSS.
 
 ## Assumptions
 
-- **Seeded users only.** The brief allows this, so there is no registration
-  endpoint.
-- **Admins can override a task's status.** The brief lists status updates under
-  the User role ("Assigned user only"), but never states that an admin cannot.
-  Since an admin manages every task, they are allowed to override; any other
-  user still receives a `403`.
+- **Admins can override a task's status.**
 - **`GET /api/users` was added.** It is not in the brief, but an admin cannot
   populate an assignee dropdown without it. It is admin-only.
 - **Tasks are assigned at creation.** `assignedTo` is required, and
@@ -272,7 +259,7 @@ hand-written CSS.
 - **Deleting a user with assigned tasks is refused** with `409` and the task
   count. Cascading would silently destroy an admin's tasks, and orphaning would
   leave a dangling `assignedTo`; the admin reassigns first.
-- **Admins are equal — there is no hierarchy.** Any admin may promote, demote or
+- **Admins are equal, with no hierarchy.** Any admin may promote, demote or
   delete any other admin, including the one who promoted them. The brief defines
   two roles rather than a chain of authority, so tracking who granted whom would
   add state it never describes. Three guards keep the system usable: you cannot
@@ -282,5 +269,5 @@ hand-written CSS.
   socket emit is a no-op and they see the task on their next load. Persisted
   notifications were out of scope.
 - **Admins can be assignees.** They appear in the dropdown like any other user.
-- **`localStorage` holds the JWT.** Simple and adequate here; a production build
+- **`localStorage` holds the JWT.** Simple and good enough here; a production build
   would prefer an httpOnly refresh-token cookie.
