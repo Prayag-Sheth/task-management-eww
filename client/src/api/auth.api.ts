@@ -21,7 +21,7 @@ export async function fetchMe(): Promise<User> {
 
 /** Admin-only: assignee list for the task form. */
 export async function fetchUsers(): Promise<User[]> {
-  const { data } = await api.get<ApiSuccess<User[]>>('/users');
+  const { data } = await api.get<ApiSuccess<User[]>>('/users/all');
   return data.data;
 }
 

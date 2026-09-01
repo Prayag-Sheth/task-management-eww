@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
+import { ZodError } from 'zod';
 import { AppError } from '../utils/AppError';
 import { ApiError } from '../types';
 import { env } from '../config/env';
@@ -30,6 +31,15 @@ export function errorHandler(
     status = err.status;
     message = err.message;
     errors = err.errors;
+  } else if (err instanceof ZodError) {
+    // Schemas parsed outside the validate middleware (query strings) land here.
+    status = 400;
+    message = 'Validation failed';
+    errors = {};
+    for (const issue of err.errors) {
+      const key = issue.path.join('.') || '_';
+      (errors[key] ??= []).push(issue.message);
+    }
   } else if (err instanceof mongoose.Error.CastError) {
     // A malformed ObjectId in the URL is a client error, not a crash.
     status = 400;

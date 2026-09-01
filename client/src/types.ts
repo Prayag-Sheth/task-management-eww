@@ -57,6 +57,59 @@ export interface UpdateTaskStatusInput {
   status: TaskStatus;
 }
 
+export const TASK_SORT_FIELDS = ['createdAt', 'title', 'status'] as const;
+export type TaskSortField = (typeof TASK_SORT_FIELDS)[number];
+
+export const SORT_ORDERS = ['asc', 'desc'] as const;
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+/** Query for a paged, searchable, sortable task list. */
+export interface TaskListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: TaskStatus;
+  assignedTo?: string;
+  sortBy?: TaskSortField;
+  order?: SortOrder;
+}
+
+export interface PageMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  meta: PageMeta;
+}
+
+/** Per-status totals for the whole result set, not just the current page. */
+export interface TaskStatusCounts {
+  all: number;
+  todo: number;
+  'in-progress': number;
+  done: number;
+}
+
+export interface TaskListResult extends Paginated<Task> {
+  counts: TaskStatusCounts;
+}
+
+export const USER_SORT_FIELDS = ['name', 'email', 'role', 'taskCount'] as const;
+export type UserSortField = (typeof USER_SORT_FIELDS)[number];
+
+export interface UserListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: Role;
+  sortBy?: UserSortField;
+  order?: SortOrder;
+}
+
 export interface UpdateTaskInput {
   title?: string;
   description?: string;

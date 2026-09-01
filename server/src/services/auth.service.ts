@@ -1,10 +1,13 @@
-import { Types } from 'mongoose';
+import { PipelineStage } from 'mongoose';
 import { UserModel } from '../models/User';
 import { TaskModel } from '../models/Task';
 import { AppError } from '../utils/AppError';
 import { signToken } from '../utils/jwt';
+import { escapeRegExp } from '../utils/regex';
 import {
   CreateUserInput,
+  Paginated,
+  UserListQuery,
   LoginInput,
   LoginResponse,
   UpdateUserInput,
@@ -40,19 +43,62 @@ export async function listUsers(): Promise<User[]> {
   return users.map((u) => u.toDomain());
 }
 
-/** Users plus how many tasks each has, for the admin's user list. */
-export async function listUsersWithTaskCounts(): Promise<UserWithStats[]> {
-  const users = await UserModel.find().sort({ name: 1 });
+/**
+ * Users with their task counts, searched, sorted and paged in the database.
+ *
+ * taskCount is a join, so sorting by it has to happen in the aggregation rather
+ * than after the fact — otherwise a page would only be sorted within itself.
+ */
+export async function listUsersWithTaskCounts(
+  query: UserListQuery = {}
+): Promise<Paginated<UserWithStats>> {
+  const page = Math.max(1, Math.floor(query.page ?? 1));
+  const limit = Math.min(100, Math.max(1, Math.floor(query.limit ?? 10)));
 
-  const counts = await TaskModel.aggregate<{ _id: Types.ObjectId; count: number }>([
-    { $group: { _id: '$assignedTo', count: { $sum: 1 } } },
+  const match: Record<string, unknown> = {};
+
+  if (query.search?.trim()) {
+    const rx = new RegExp(escapeRegExp(query.search.trim()), 'i');
+    match.$or = [{ name: rx }, { email: rx }];
+  }
+
+  if (query.role) match.role = query.role;
+
+  const sortBy = query.sortBy ?? 'name';
+  const direction = query.order === 'desc' ? -1 : 1;
+
+  const pipeline: PipelineStage[] = [
+    { $match: match },
+    {
+      $lookup: {
+        from: 'tasks',
+        localField: '_id',
+        foreignField: 'assignedTo',
+        as: 'assignedTasks',
+      },
+    },
+    { $addFields: { taskCount: { $size: '$assignedTasks' } } },
+    { $project: { assignedTasks: 0, password: 0 } },
+    { $sort: { [sortBy]: direction, _id: 1 } },
+  ];
+
+  const [rows, total] = await Promise.all([
+    UserModel.aggregate([...pipeline, { $skip: (page - 1) * limit }, { $limit: limit }]),
+    UserModel.countDocuments(match),
   ]);
-  const byUser = new Map(counts.map((c) => [c._id.toString(), c.count]));
 
-  return users.map((u) => ({
-    ...u.toDomain(),
-    taskCount: byUser.get(u._id.toString()) ?? 0,
+  const items: UserWithStats[] = rows.map((r) => ({
+    id: r._id.toString(),
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    taskCount: r.taskCount,
   }));
+
+  return {
+    items,
+    meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+  };
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {

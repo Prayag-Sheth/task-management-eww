@@ -3,7 +3,7 @@ import { z } from 'zod';
 import * as taskService from '../services/task.service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { AppError } from '../utils/AppError';
-import { TASK_STATUSES } from '../types';
+import { SORT_ORDERS, TASK_SORT_FIELDS, TASK_STATUSES } from '../types';
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
@@ -27,9 +27,26 @@ function actorOf(req: Request) {
   return req.user;
 }
 
+/** Query params arrive as strings; coerce and bound them here. */
+export const taskListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().trim().max(200).optional(),
+  status: z.enum(TASK_STATUSES).optional(),
+  assignedTo: z.string().optional(),
+  sortBy: z.enum(TASK_SORT_FIELDS).optional(),
+  order: z.enum(SORT_ORDERS).optional(),
+});
+
 export const listTasks = asyncHandler(async (req: Request, res: Response) => {
-  const data = await taskService.listTasks(actorOf(req));
-  res.json({ success: true, data });
+  const query = taskListQuerySchema.parse(req.query);
+  const result = await taskService.listTasks(actorOf(req), query);
+  res.json({
+    success: true,
+    data: result.items,
+    meta: result.meta,
+    counts: result.counts,
+  });
 });
 
 export const createTask = asyncHandler(async (req: Request, res: Response) => {

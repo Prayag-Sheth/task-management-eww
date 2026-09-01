@@ -3,7 +3,7 @@ import { z } from 'zod';
 import * as authService from '../services/auth.service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { AppError } from '../utils/AppError';
-import { ROLES } from '../types';
+import { ROLES, SORT_ORDERS, USER_SORT_FIELDS } from '../types';
 
 export const loginSchema = z.object({
   email: z.string().email('A valid email is required'),
@@ -43,9 +43,19 @@ export const updateUserSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 
 /** Admin list, including per-user task counts. */
-export const listUsersWithStats = asyncHandler(async (_req: Request, res: Response) => {
-  const data = await authService.listUsersWithTaskCounts();
-  res.json({ success: true, data });
+export const userListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().trim().max(200).optional(),
+  role: z.enum(ROLES).optional(),
+  sortBy: z.enum(USER_SORT_FIELDS).optional(),
+  order: z.enum(SORT_ORDERS).optional(),
+});
+
+export const listUsersWithStats = asyncHandler(async (req: Request, res: Response) => {
+  const query = userListQuerySchema.parse(req.query);
+  const result = await authService.listUsersWithTaskCounts(query);
+  res.json({ success: true, data: result.items, meta: result.meta });
 });
 
 export const createUser = asyncHandler(async (req: Request, res: Response) => {

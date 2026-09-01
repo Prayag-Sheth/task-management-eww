@@ -2,13 +2,17 @@ import { Types } from 'mongoose';
 import { TaskModel } from '../models/Task';
 import { UserModel, UserDocument } from '../models/User';
 import { AppError } from '../utils/AppError';
+import { escapeRegExp } from '../utils/regex';
 import { emitTaskAssigned, emitTaskUpdated, emitTaskDeleted } from '../sockets';
 import {
   CreateTaskInput,
   UpdateTaskInput,
   Role,
   Task,
+  TaskListQuery,
+  TaskListResult,
   TaskStatus,
+  TaskStatusCounts,
 } from '../types';
 
 interface Actor {
@@ -16,18 +20,73 @@ interface Actor {
   role: Role;
 }
 
+const MAX_LIMIT = 100;
+
 /**
  * Admin sees every task; a user sees only their own. This scoping is the single
  * source of truth for read access — controllers never filter.
+ *
+ * Search, sort and pagination all run in MongoDB rather than in the client, so
+ * the payload stays bounded however large the collection grows.
  */
-export async function listTasks(actor: Actor): Promise<Task[]> {
-  const filter = actor.role === 'admin' ? {} : { assignedTo: actor.id };
+export async function listTasks(
+  actor: Actor,
+  query: TaskListQuery = {}
+): Promise<TaskListResult> {
+  const page = Math.max(1, Math.floor(query.page ?? 1));
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(query.limit ?? 10)));
 
-  const tasks = await TaskModel.find(filter)
-    .populate('assignedTo')
-    .sort({ createdAt: -1 });
+  // Access scope first — every other condition narrows within it.
+  const scope: Record<string, unknown> =
+    actor.role === 'admin' ? {} : { assignedTo: actor.id };
 
-  return tasks.map((t) => t.toDomain());
+  if (query.assignedTo && actor.role === 'admin') {
+    scope.assignedTo = query.assignedTo;
+  }
+
+  const filter: Record<string, unknown> = { ...scope };
+
+  if (query.search?.trim()) {
+    // Escape the input: a stray ( or * would otherwise be a regex, not a search.
+    const safe = escapeRegExp(query.search.trim());
+    const rx = new RegExp(safe, 'i');
+    filter.$or = [{ title: rx }, { description: rx }];
+  }
+
+  // Counts are taken before the status filter is applied, so the tabs keep
+  // showing every total rather than only the selected one.
+  const filterWithoutStatus = { ...filter };
+  if (query.status) filter.status = query.status;
+
+  const sortBy = query.sortBy ?? 'createdAt';
+  const direction = query.order === 'asc' ? 1 : -1;
+  // _id breaks ties so paging is stable when sort values repeat.
+  const sort: Record<string, 1 | -1> = { [sortBy]: direction, _id: -1 };
+
+  const [items, total, grouped] = await Promise.all([
+    TaskModel.find(filter)
+      .populate('assignedTo')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit),
+    TaskModel.countDocuments(filter),
+    TaskModel.aggregate<{ _id: TaskStatus; count: number }>([
+      { $match: filterWithoutStatus },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]).exec(),
+  ]);
+
+  const counts: TaskStatusCounts = { all: 0, todo: 0, 'in-progress': 0, done: 0 };
+  for (const g of grouped) {
+    counts[g._id] = g.count;
+    counts.all += g.count;
+  }
+
+  return {
+    items: items.map((t) => t.toDomain()),
+    meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    counts,
+  };
 }
 
 export async function createTask(actor: Actor, input: CreateTaskInput): Promise<Task> {

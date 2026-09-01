@@ -18,6 +18,9 @@ userRouter.use(authenticate, requireRole('admin'));
 
 userRouter.get('/', authController.listUsersWithStats);
 
+// Unpaged list for assignee pickers, which need every option at once.
+userRouter.get('/all', authController.listUsers);
+
 userRouter.post(
   '/',
   validate(authController.createUserSchema),

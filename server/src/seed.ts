@@ -7,7 +7,7 @@ const PASSWORD = 'password123';
 
 const SEED_USERS = [
   { name: 'Admin User', email: 'admin@example.com', role: 'admin' as const },
-  { name: 'Priya Sharma', email: 'priya@example.com', role: 'admin' as const },
+  { name: 'Priya Sharma', email: 'admin2@example.com', role: 'admin' as const },
   { name: 'John Doe', email: 'john@example.com', role: 'user' as const },
   { name: 'Jane Smith', email: 'jane@example.com', role: 'user' as const },
   { name: 'Arjun Patel', email: 'arjun@example.com', role: 'user' as const },

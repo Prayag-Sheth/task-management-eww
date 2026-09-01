@@ -68,7 +68,7 @@ All accounts use the password **`password123`**. The seed creates **15 users**
 | Email                  | Role  | Notes |
 |------------------------|-------|-------|
 | `admin@example.com`    | admin | Primary admin — use this one to try the app |
-| `priya@example.com`    | admin | Secondary admin — shows two admins coexisting |
+| `admin2@example.com`    | admin | Secondary admin — shows two admins coexisting |
 | `john@example.com`     | user  |       |
 | `jane@example.com`     | user  |       |
 | `arjun@example.com`    | user  |       |
