@@ -40,9 +40,16 @@ MongoDB Atlas also works; just point `MONGODB_URI` at your cluster.
 ```bash
 cd server
 npm install
-cp .env.example .env     # adjust if your Mongo runs elsewhere
-npm run seed             # creates the demo users and a few tasks
+cp .env.example .env     # then set JWT_SECRET (see below) and adjust MONGODB_URI if needed
+npm run seed             # creates the demo users and tasks
 npm run dev              # http://localhost:5000
+```
+
+`JWT_SECRET` has no default and the server refuses to start with the example
+placeholder, so generate one first:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
 ### 2. Frontend
@@ -103,7 +110,7 @@ All accounts use the password **`password123`**. The seed creates **15 users**
 | `PORT`           | API port                             | `5000` |
 | `NODE_ENV`       | Environment                          | `development` |
 | `MONGODB_URI`    | MongoDB connection string            | `mongodb://127.0.0.1:27017/task_management` |
-| `JWT_SECRET`     | Secret used to sign tokens           | a long random string |
+| `JWT_SECRET`     | Secret used to sign tokens (min 32 chars) | generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `JWT_EXPIRES_IN` | Token lifetime                       | `1d` |
 | `CLIENT_URL`     | Allowed CORS origin(s), comma-separated | `http://localhost:5173` |
 

@@ -12,11 +12,29 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * Rejects the value shipped in .env.example. A placeholder secret is public
+ * knowledge, so anyone could mint a valid admin token against it.
+ */
+function requiredSecret(name: string): string {
+  const value = required(name);
+  if (value.startsWith('CHANGE_ME') || value === 'replace_me_with_a_long_random_string') {
+    throw new Error(
+      `${name} is still the example placeholder. Generate one with:\n` +
+        `  node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+    );
+  }
+  if (value.length < 32) {
+    throw new Error(`${name} must be at least 32 characters.`);
+  }
+  return value;
+}
+
 export const env = {
   port: Number(process.env.PORT ?? 5000),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   mongoUri: required('MONGODB_URI'),
-  jwtSecret: required('JWT_SECRET'),
+  jwtSecret: requiredSecret('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
 
